@@ -923,7 +923,7 @@
       </svg>
     </div>
     <!-- Background Music: Baarishein.mp3 -->
-    <audio id="bgMusic" preload="auto" loop autoplay muted playsinline>
+    <audio id="bgMusic" preload="auto" loop>
       <source src="Baarishein.mp3" type="audio/mpeg">
     </audio>
 
@@ -1267,7 +1267,7 @@
       celebrationBurst();
     });
 
-    // Auto-enable background music on first user interaction
+    // Start background music on first user interaction (no autoplay)
     (function setupBgMusicAutoplay(){
       const bg = document.getElementById('bgMusic');
       if (!bg) return;
@@ -1284,43 +1284,33 @@
       }
 
       let started = false;
-      // Try to start muted on load (allowed), then unmute on first gesture
-      document.addEventListener('DOMContentLoaded', () => {
+
+      function start() {
+        if (started) return;
+        started = true;
         seekToStart();
-        try {
-          bg.muted = true;
-          bg.play().catch(() => {});
-        } catch(_) {}
-        // Attempt multiple unmute steps to cover timing differences
-        const attempts = [400, 900, 1500];
-        attempts.forEach(ms => {
-          setTimeout(() => {
-            try {
-              bg.muted = false;
-              bg.volume = 0.6;
-              started = true;
-            } catch(_) {}
-          }, ms);
-        });
-      }, { once: true });
+        bg.muted = false;
+        bg.volume = 0.6;
+        bg.play().catch(() => {});
+        removeAll();
+      }
 
-      // No user gesture required; autoplay starts muted and then un-mutes shortly after
+      function addAll() {
+        document.addEventListener('click', start, { capture: true });
+        document.addEventListener('pointerdown', start, { capture: true });
+        document.addEventListener('touchstart', start, { capture: true });
+        document.addEventListener('keydown', start, { capture: true });
+      }
+      function removeAll() {
+        document.removeEventListener('click', start, true);
+        document.removeEventListener('pointerdown', start, true);
+        document.removeEventListener('touchstart', start, true);
+        document.removeEventListener('keydown', start, true);
+      }
 
-      // Additional fallback: when audio becomes ready, ensure muted playback
-      bg.addEventListener('canplay', () => {
-        seekToStart();
-        try { bg.play(); } catch(_) {}
-        try {
-          bg.muted = false;
-          bg.volume = 0.6;
-          started = true;
-        } catch(_) {}
-      }, { once: true });
-
-      bg.addEventListener('play', () => {
-        // Ensure we are not accidentally muted once playback starts
-        setTimeout(() => { try { bg.muted = false; bg.volume = 0.6; } catch(_) {} }, 200);
-      });
+      // Prepare seeking when metadata loads
+      bg.addEventListener('loadedmetadata', () => { seekToStart(); }, { once: true });
+      addAll();
     })();
 
     // Card parallax tilt (disabled while interacting with button zone)
