@@ -1575,33 +1575,96 @@
       let newLeft = (b.left - z.left) + (dx + perpX) * moveDist;
       let newTop  = (b.top - z.top) + (dy + perpY) * moveDist;
 
-      newLeft = clamp(newLeft, 0, z.width - b.width);
-      newTop  = clamp(newTop, 0, z.height - b.height);
-
-      // Prevent overlap with Yes button
+      // ULTRA-ROBUST COLLISION AVOIDANCE SYSTEM
+      // Get Yes button boundaries with safety buffer
       const yesCenterX = (yb.left - z.left) + yb.width / 2;
       const yesCenterY = (yb.top - z.top) + yb.height / 2;
-      const newCenterX = newLeft + b.width / 2;
-      const newCenterY = newTop + b.height / 2;
-      const distToYes = Math.hypot(newCenterX - yesCenterX, newCenterY - yesCenterY);
-      if (distToYes < 140) {
-        const ax = (newCenterX - yesCenterX) / (distToYes || 1);
-        const ay = (newCenterY - yesCenterY) / (distToYes || 1);
-        newLeft = clamp(newLeft + ax * 120, 0, z.width - b.width);
-        newTop  = clamp(newTop + ay * 120, 0, z.height - b.height);
+      const yesLeft = yb.left - z.left;
+      const yesTop = yb.top - z.top;
+      const yesRight = yesLeft + yb.width;
+      const yesBottom = yesTop + yb.height;
+      const SAFE_DISTANCE = 250; // Much larger safe distance
+      
+      // Function to check if position is safe
+      function isPositionSafe(testLeft, testTop) {
+        const testCenterX = testLeft + b.width / 2;
+        const testCenterY = testTop + b.height / 2;
+        const centerDistance = Math.hypot(testCenterX - yesCenterX, testCenterY - yesCenterY);
+        
+        // Check rectangle overlap with expanded Yes area
+        const expandedYes = {
+          left: yesLeft - 60,
+          top: yesTop - 60, 
+          right: yesRight + 60,
+          bottom: yesBottom + 60
+        };
+        
+        const testRight = testLeft + b.width;
+        const testBottom = testTop + b.height;
+        const hasOverlap = !(testRight < expandedYes.left || testLeft > expandedYes.right || 
+                            testBottom < expandedYes.top || testTop > expandedYes.bottom);
+        
+        return centerDistance >= SAFE_DISTANCE && !hasOverlap;
       }
-
-      // Edge fallback: if stuck near border, teleport away from pointer
-      const nearEdge = newLeft < 8 || newTop < 8 || newLeft > (z.width - b.width - 8) || newTop > (z.height - b.height - 8);
-      if (nearEdge) {
-        const rx = Math.random() * (z.width - b.width);
-        const ry = Math.random() * (z.height - b.height);
-        const dPointer = Math.hypot((z.left + rx + b.width/2) - px, (z.top + ry + b.height/2) - py);
-        if (dPointer < 160) {
-          newLeft = clamp(z.width - rx - b.width, 0, z.width - b.width);
-          newTop  = clamp(z.height - ry - b.height, 0, z.height - b.height);
+      
+      // Step 1: Try to clamp and check if safe
+      newLeft = clamp(newLeft, 0, z.width - b.width);
+      newTop = clamp(newTop, 0, z.height - b.height);
+      
+      // Step 2: If not safe, try predefined safe zones
+      if (!isPositionSafe(newLeft, newTop)) {
+        const safeZones = [
+          // Far corners
+          { left: 15, top: 15 },
+          { left: z.width - b.width - 15, top: 15 },
+          { left: 15, top: z.height - b.height - 15 },
+          { left: z.width - b.width - 15, top: z.height - b.height - 15 },
+          // Mid edges
+          { left: z.width / 2 - b.width / 2, top: 15 },
+          { left: 15, top: z.height / 2 - b.height / 2 },
+          { left: z.width - b.width - 15, top: z.height / 2 - b.height / 2 },
+          { left: z.width / 2 - b.width / 2, top: z.height - b.height - 15 }
+        ];
+        
+        // Find the safest zone (farthest from Yes)
+        let bestZone = null;
+        let maxDistance = 0;
+        
+        for (const zone of safeZones) {
+          if (isPositionSafe(zone.left, zone.top)) {
+            const zoneCenterX = zone.left + b.width / 2;
+            const zoneCenterY = zone.top + b.height / 2;
+            const distance = Math.hypot(zoneCenterX - yesCenterX, zoneCenterY - yesCenterY);
+            
+            if (distance > maxDistance) {
+              maxDistance = distance;
+              bestZone = zone;
+            }
+          }
+        }
+        
+        if (bestZone) {
+          newLeft = bestZone.left;
+          newTop = bestZone.top;
         } else {
-          newLeft = rx; newTop = ry;
+          // Step 3: Force to opposite corner as absolute fallback
+          if (yesCenterX < z.width / 2 && yesCenterY < z.height / 2) {
+            // Yes in top-left quadrant, force No to bottom-right
+            newLeft = z.width - b.width - 15;
+            newTop = z.height - b.height - 15;
+          } else if (yesCenterX >= z.width / 2 && yesCenterY < z.height / 2) {
+            // Yes in top-right quadrant, force No to bottom-left  
+            newLeft = 15;
+            newTop = z.height - b.height - 15;
+          } else if (yesCenterX < z.width / 2 && yesCenterY >= z.height / 2) {
+            // Yes in bottom-left quadrant, force No to top-right
+            newLeft = z.width - b.width - 15;
+            newTop = 15;
+          } else {
+            // Yes in bottom-right quadrant, force No to top-left
+            newLeft = 15;
+            newTop = 15;
+          }
         }
       }
 
