@@ -539,6 +539,28 @@
       }
     }
 
+    /* YES CELEBRATION EMOJI RAIN */
+    .emoji-rain-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9998;
+      overflow: hidden;
+    }
+
+    .emoji-drop {
+      position: absolute;
+      top: -10%;
+      font-size: clamp(24px, 6vw, 34px);
+      animation: emojiFall var(--duration, 3s) linear forwards;
+      filter: drop-shadow(0 6px 10px rgba(255, 61, 122, 0.35));
+    }
+
+    @keyframes emojiFall {
+      0% { transform: translateY(-110%); opacity: 1; }
+      100% { transform: translateY(110%); opacity: 0; }
+    }
+
     h1 {
       font-size: clamp(28px, 4.5vw, 48px);
       margin: 20px 0 24px;
@@ -1808,10 +1830,12 @@
       zone.style.display = "none";
       hint.style.display = "none";     // HIDE THE HINT
       result.style.display = "block";
-      result.classList.add('show'); // Add celebration animation
       
       resizeConfettiCanvas();
       fullScreenConfetti();
+
+      // Hearts & celebration emoji rain for ~2 seconds
+      startEmojiRain(2000);
       
       // Create burst of sparkles
       setTimeout(() => {
@@ -1836,6 +1860,58 @@
       // Heart burst celebration
       celebrationBurst();
     });
+
+    // Emoji rain: hearts and celebration emojis falling across screen
+    function startEmojiRain(durationMs = 2000) {
+      const layer = document.createElement('div');
+      layer.className = 'emoji-rain-layer';
+      document.body.appendChild(layer);
+
+      const emojis = ['💖', '💕', '💗', '💝', '🎉', '✨', '🥳'];
+      const start = Date.now();
+
+      function spawnBatch() {
+        const elapsed = Date.now() - start;
+        if (elapsed > durationMs) return;
+
+        const dropsThisBatch = 10;
+        for (let i = 0; i < dropsThisBatch; i++) {
+          const drop = document.createElement('div');
+          drop.className = 'emoji-drop';
+          drop.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+
+          const left = Math.random() * 100; // 0-100vw
+          const duration = 2.4 + Math.random() * 1.2; // 2.4-3.6s
+          const delay = Math.random() * 0.4; // 0-0.4s
+
+          drop.style.left = left + 'vw';
+          drop.style.setProperty('--duration', duration + 's');
+          drop.style.animationDelay = delay + 's';
+
+          layer.appendChild(drop);
+
+          // Clean up individual drop after it finishes
+          setTimeout(() => {
+            if (drop.parentNode) drop.remove();
+          }, (duration + delay) * 1000 + 200);
+        }
+
+        // Keep spawning batches roughly every 200ms while within duration
+        setTimeout(spawnBatch, 200);
+      }
+
+      spawnBatch();
+
+      // Fade out and remove entire layer after rain finishes
+      const totalLife = durationMs + 3200; // allow falls to complete
+      setTimeout(() => {
+        layer.style.transition = 'opacity 0.6s ease-out';
+        layer.style.opacity = '0';
+        setTimeout(() => {
+          if (layer.parentNode) layer.remove();
+        }, 700);
+      }, totalLife);
+    }
 
     // Start background music on first user interaction (no autoplay)
     (function setupBgMusicAutoplay(){
