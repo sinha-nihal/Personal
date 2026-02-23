@@ -935,7 +935,7 @@
     }
     
     .heart-tear {
-      position: absolute;
+      position: fixed;
       font-size: 30px;
       color: #4db5ff;
       text-shadow: 0 0 10px rgba(77, 181, 255, 0.8);
@@ -945,18 +945,58 @@
       animation: tearFall 4s ease-in forwards;
     }
     
+    .heart-tear.large {
+      font-size: 40px;
+      text-shadow: 0 0 15px rgba(77, 181, 255, 0.9);
+    }
+    
+    .heart-tear.small {
+      font-size: 20px;
+      text-shadow: 0 0 8px rgba(77, 181, 255, 0.7);
+    }
+    
     @keyframes tearFall {
       0% {
         opacity: 0;
-        transform: translateY(-50px) scale(0.5);
+        transform: translateY(-50px) scale(0.5) rotate(0deg);
       }
       15% {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: translateY(0) scale(1) rotate(15deg);
       }
       100% {
-        opacity: 0.3;
-        transform: translateY(300px) scale(0.8);
+        opacity: 0.2;
+        transform: translateY(400px) scale(0.6) rotate(45deg);
+      }
+    }
+    
+    @keyframes tearFallSlow {
+      0% {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.3) rotate(0deg);
+      }
+      20% {
+        opacity: 1;
+        transform: translateY(0) scale(1) rotate(-10deg);
+      }
+      100% {
+        opacity: 0.1;
+        transform: translateY(500px) scale(0.4) rotate(-30deg);
+      }
+    }
+    
+    @keyframes tearFallFast {
+      0% {
+        opacity: 0;
+        transform: translateY(-70px) scale(0.8) rotate(0deg);
+      }
+      10% {
+        opacity: 1;
+        transform: translateY(0) scale(1.2) rotate(20deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(350px) scale(0.5) rotate(60deg);
       }
     }
 
@@ -1476,13 +1516,7 @@
       "No",
       "Are you sure? 🥺", 
       "Really? 💔",
-      "Last chance 😅",
       "Please reconsider 🥹",
-      "But we're perfect! 😭",
-      "Think of our future! 💕", 
-      "I'll cook for you! 👩‍🍳",
-      "Fine, maybe? 🤷‍♀️",
-      "Just say yes! 😤",
       "You're breaking my heart! 💔😢"
     ];
     
@@ -1628,26 +1662,48 @@
       heartContainer.appendChild(heartRight);
       overlay.appendChild(heartContainer);
       
-      // Add tears falling from the heart
-      const tears = ['💧', '💧', '💧', '💧', '💧'];
-      tears.forEach((tear, index) => {
+      // Add tears falling across the entire screen immediately
+      const tearTypes = ['💧', '😢', '💙', '🌊', '❄️'];
+      const tearSizes = ['small', 'normal', 'large'];
+      const numTears = 80; // Create many tears across the screen
+      
+      for (let i = 0; i < numTears; i++) {
+        const tearElement = document.createElement('div');
+        tearElement.className = 'heart-tear';
+        
+        // Add random size class
+        const size = tearSizes[Math.floor(Math.random() * tearSizes.length)];
+        if (size !== 'normal') {
+          tearElement.classList.add(size);
+        }
+        
+        // Random tear type
+        tearElement.textContent = tearTypes[Math.floor(Math.random() * tearTypes.length)];
+        
+        // Position randomly across entire viewport
+        const randomX = Math.random() * 100; // 0-100% of viewport width
+        const randomY = Math.random() * 20; // Start from top 20% of screen
+        tearElement.style.left = randomX + '%';
+        tearElement.style.top = randomY + '%';
+        
+        // Add variety to animation timing and type
+        const animationTypes = ['tearFall', 'tearFallSlow', 'tearFallFast'];
+        const animationType = animationTypes[Math.floor(Math.random() * animationTypes.length)];
+        const duration = 3 + Math.random() * 3; // 3-6 seconds
+        const delay = Math.random() * 500; // 0-500ms delay
+        
+        tearElement.style.animation = `${animationType} ${duration}s ease-in ${delay}ms forwards`;
+        
+        // Append to document body for full screen coverage
+        document.body.appendChild(tearElement);
+        
+        // Remove tear after animation completes
         setTimeout(() => {
-          const tearElement = document.createElement('div');
-          tearElement.className = 'heart-tear';
-          tearElement.textContent = tear;
-          
-          // Position tears around the heart center with slight randomness
-          const offsetX = (Math.random() - 0.5) * 100;
-          const offsetY = (Math.random() - 0.5) * 50;
-          tearElement.style.left = `calc(50% + ${offsetX}px)`;
-          tearElement.style.top = `calc(50% + ${offsetY}px)`;
-          
-          overlay.appendChild(tearElement);
-          
-          // Remove tear after animation
-          setTimeout(() => tearElement.remove(), 4000);
-        }, index * 800 + 1000); // Start tears after 1 second, stagger them
-      });
+          if (tearElement.parentNode) {
+            tearElement.remove();
+          }
+        }, (duration * 1000) + delay + 1000);
+      }
       
       document.body.appendChild(overlay);
       
@@ -1773,7 +1829,7 @@
       noClickCount++; // Increment click count
       
       // Check if we've reached the last message
-      if (noClickCount > noTexts.length) {
+      if (noClickCount >= noTexts.length) {
         // Break the button apart!
         breakButtonApart();
         return;
